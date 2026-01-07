@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open Source Intelligence (OSINT): An Investigator’s Lens</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg0:#0b0f14;
+      --bg1:#0e1620;
+      --bg2:#0a1220;
+      --grid:#0f2538;
+      --accent:#3ad0ff;
+      --accent2:#7cff3a;
+      --danger:#ff3a7c;
+      --text:#e6edf5;
+      --muted:#8aa0b4;
+      --glow:0 0 24px rgba(58,208,255,0.6);
+      --glow-soft:0 0 16px rgba(58,208,255,0.35);
+      --pulse:#3ad0ff;
+      --blue:#2ab3ff;
+      --green:#7cff3a;
+      --red:#ff3a7c;
+      --yellow:#ffd43a;
+      --slide-w:100vw;
+      --slide-h:100vh;
+      --transition:700ms cubic-bezier(.22,.8,.26,.99);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;background:var(--bg0);color:var(--text);margin:0}
+    body{font-family:'Rajdhani',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",sans-serif; overflow:hidden}
+
+    /* Cyber parallax background */
+    .scene{
+      position:fixed; inset:0; z-index:-1; overflow:hidden; perspective:1200px;
+    }
+    .layer{
+      position:absolute; inset:0; background:transparent;
+    }
+    .grid{
+      background:
+        radial-gradient(circle at 50% 40%, rgba(58,208,255,.08), transparent 40%),
+        repeating-linear-gradient(0deg, transparent 0 38px, rgba(16,40,64,.25) 38px 39px),
+        repeating-linear-gradient(90deg, transparent 0 38px, rgba(16,40,64,.25) 38px 39px),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      transform:translateZ(-300px) scale(1.3);
+      animation:gridShift 20s linear infinite;
+    }
+    @keyframes gridShift{
+      0%{background-position:0 0, 0 0, 0 0, 0 0}
+      100%{background-position:0 0, 0 120px, 120px 0, 0 0}
+    }
+    .nodes::before{
+      content:""; position:absolute; inset:-20%; background:
+        radial-gradient(6px 6px at 15% 20%, rgba(58,208,255,.6), transparent 70%),
+        radial-gradient(6px 6px at 60% 55%, rgba(124,255,58,.5), transparent 70%),
+        radial-gradient(6px 6px at 75% 30%, rgba(255,58,124,.5), transparent 70%),
+        radial-gradient(6px 6px at 30% 75%, rgba(58,208,255,.6), transparent 70%);
+      filter:blur(0.5px);
+      transform:translateZ(-200px) scale(1.1);
+      animation:nodesPulse 6s ease-in-out infinite;
+    }
+    @keyframes nodesPulse{50%{opacity:.7} 100%{opacity:1}}
+
+    /* Container and slides */
+    .deck{
+      position:relative; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center;
+    }
+    .slides{
+      position:absolute; inset:0; display:flex; transition:transform var(--transition);
+    }
+    .slide{
+      width:var(--slide-w); height:var(--slide-h);
+      padding:4vh 6vw; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:2vh; text-align:center;
+      background:linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.25));
+    }
+    .slide h1, .slide h2{font-family:'Share Tech Mono','Rajdhani',monospace; letter-spacing:.6px; margin:.2em 0}
+    .slide h1{font-size:clamp(28px, 5vw, 64px); color:var(--text)}
+    .slide h2{font-size:clamp(22px, 3.8vw, 42px); color:#cfe8ff}
+    .lead{max-width:940px; font-size:clamp(16px, 1.8vw, 22px); color:var(--muted)}
+
+    /* Opening slide */
+    .opening{
+      position:relative;
+    }
+    .team-logo{
+      width:min(22vw, 240px); height:min(22vw, 240px);
+      border-radius:50%;
+      background:radial-gradient(circle at 30% 30%, #0ff8, #08a8 65%, transparent 68%), linear-gradient(180deg, #083, #022);
+      box-shadow:0 0 30px rgba(58,208,255,.6), inset 0 0 24px rgba(124,255,58,.25);
+      display:flex; align-items:center; justify-content:center; color:#aef; font-weight:700; font-size:clamp(18px, 2vw, 24px);
+      animation:pulse 2.8s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{transform:scale(1); box-shadow:var(--glow)}
+      50%{transform:scale(1.06); box-shadow:0 0 42px rgba(58,208,255,.85)}
+    }
+    .team-name{
+      font-size:clamp(32px, 6vw, 84px);
+      font-weight:700; color:#e6f7ff;
+      text-shadow:0 0 10px rgba(58,208,255,.4), 0 0 25px rgba(58,208,255,.2);
+      animation:glitch 1500ms steps(2,end) 1 both;
+    }
+    @keyframes glitch{
+      0%{transform:translate(0); filter:none}
+      20%{transform:translate(-2px,1px)}
+      40%{transform:translate(2px,-1px)}
+      60%{transform:translate(-1px,-2px)}
+      80%{transform:translate(1px,2px)}
+      100%{transform:none}
+    }
+    .tagline{
+      font-weight:700; letter-spacing:.8px;
+      font-family:'Share Tech Mono', monospace;
+      font-size:clamp(16px, 2.4vw, 28px);
+      color:#9eeaff;
+      text-shadow:0 0 6px rgba(255,255,255,.08), 0 0 22px rgba(58,208,255,.35);
+      filter:contrast(110%) saturate(110%);
+    }
+
+    /* Navigation */
+    .nav{
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between; padding:0 2vw; pointer-events:none;
+    }
+    .arrow{
+      width:52px; height:52px; border:1px solid #1f3347; border-radius:50%;
+      backdrop-filter:blur(6px); background:rgba(12,20,28,.45);
+      box-shadow:0 2px 10px rgba(0,0,0,.35), var(--glow-soft);
+      display:grid; place-items:center; color:#bfe9ff; cursor:pointer; pointer-events:auto;
+      transition:transform .15s ease, background .2s ease, border-color .2s ease;
+    }
+    .arrow:hover{transform:scale(1.06); background:rgba(16,28,38,.65); border-color:#2c4f6e}
+    .arrow:active{transform:scale(.95)}
+    .arrow svg{width:22px; height:22px}
+
+    .progress{
+      position:absolute; bottom:2vh; left:50%; transform:translateX(-50%);
+      display:flex; align-items:center; gap:12px; font-family:'Share Tech Mono', monospace;
+    }
+    .dots{display:flex; gap:8px}
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background:#24465f; box-shadow:0 0 10px rgba(58,208,255,.25);
+      transition:background .3s ease, transform .3s ease;
+    }
+    .dot.active{background:var(--accent); transform:scale(1.25)}
+    .counter{color:#bfe9ff; font-size:14px}
+
+    /* Common components */
+    .icon-row{display:flex; gap:2.4vw; flex-wrap:wrap; align-items:center; justify-content:center; margin-top:1vh}
+    .icon{
+      width:min(120px, 18vw); height:min(120px, 18vw);
+      border-radius:14px; border:1px solid #2c4f6e; background:rgba(10,18,30,.55);
+      box-shadow:inset 0 0 18px rgba(58,208,255,.15), 0 10px 24px rgba(0,0,0,.35);
+      display:flex; align-items:center; justify-content:center; color:#cfe8ff;
+      transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+      position:relative; overflow:hidden;
+    }
+    .icon::after{
+      content:""; position:absolute; inset:auto 0 0 0; height:3px; background:linear-gradient(90deg,transparent, var(--accent), transparent);
+      opacity:.65; transform:translateY(8px); transition:transform .3s ease;
+    }
+    .icon:hover{transform:translateY(-4px) scale(1.03); box-shadow:0 14px 30px rgba(0,0,0,.45), var(--glow-soft); border-color:#3a6e92}
+    .icon:hover::after{transform:translateY(0)}
+    .icon svg{width:52%; height:52%; filter:drop-shadow(0 0 6px rgba(58,208,255,.35))}
+
+    .checklist{display:grid; gap:1.2vh; text-align:left; max-width:900px}
+    .check{display:flex; align-items:center; gap:14px; font-size:clamp(16px, 1.8vw, 22px)}
+    .check .mark{
+      width:22px; height:22px; border-radius:50%; border:1px solid #2c4f6e; background:rgba(10,18,30,.6);
+      box-shadow:inset 0 0 10px rgba(124,255,58,.15);
+      display:grid; place-items:center; color:var(--green);
+      animation:pop .6s ease both; opacity:0;
+    }
+    @keyframes pop{0%{transform:scale(.6); opacity:0} 100%{transform:scale(1); opacity:1}}
+
+    /* Split screen (Hacker vs Researcher) */
+    .split{display:grid; grid-template-columns:1fr 1fr; gap:3vw; width:min(1200px, 92vw)}
+    .panel{
+      border:1px solid #223a50; border-radius:16px; padding:2.4vh 2.2vw;
+      background:linear-gradient(180deg, rgba(20,12,16,.4), rgba(10,18,30,.45));
+      box-shadow:inset 0 0 24px rgba(0,0,0,.25), 0 10px 28px rgba(0,0,0,.35);
+      position:relative; overflow:hidden;
+    }
+    .panel.hacker{outline:1px solid rgba(255,58,124,.25)}
+    .panel.researcher{outline:1px solid rgba(58,208,255,.25)}
+    .panel h3{margin-top:0; font-size:clamp(20px, 2.6vw, 30px); font-family:'Share Tech Mono', monospace}
+    .contrast{
+      position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; opacity:.25;
+      background:radial-gradient(1200px 400px at 20% 50%, rgba(255,58,124,.25), transparent 60%),
+                 radial-gradient(1200px 400px at 80% 50%, rgba(58,208,255,.25), transparent 60%);
+    }
+
+    /* Flow diagram */
+    .flow{display:flex; gap:1.6vw; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:1vh}
+    .node{
+      padding:.8em 1.2em; border-radius:12px; border:1px solid #2c4f6e; color:#dff3ff;
+      background:rgba(10,18,30,.5); position:relative; box-shadow:inset 0 0 12px rgba(58,208,255,.12);
+    }
+    .arrow-link{width:38px; height:2px; background:linear-gradient(90deg, rgba(58,208,255,.1), rgba(58,208,255,.6)); border-radius:2px; position:relative}
+    .arrow-link::after{content:""; position:absolute; right:-6px; top:-4px; border:6px solid transparent; border-left-color:rgba(58,208,255,.7)}
+
+    /* Carousel ring */
+    .carousel-wrap{position:relative; width:min(800px, 90vw); height:min(460px, 55vh); margin-top:1vh}
+    .ring{
+      position:absolute; inset:0; transform-style:preserve-3d; animation:ringSpin 22s linear infinite;
+    }
+    @keyframes ringSpin{to{transform:rotateY(360deg)}}
+    .card{
+      position:absolute; top:50%; left:50%; width:220px; height:140px;
+      transform-style:preserve-3d; border:1px solid #2c4f6e; border-radius:14px;
+      background:rgba(10,18,30,.55); box-shadow:inset 0 0 14px rgba(58,208,255,.12), 0 10px 24px rgba(0,0,0,.35);
+      display:flex; align-items:center; justify-content:center; text-align:center; padding:10px;
+      transition:transform .3s ease, box-shadow .3s ease;
+    }
+    .card:hover{transform:translateZ(30px); box-shadow:0 12px 26px rgba(0,0,0,.45), var(--glow-soft)}
+    .card h4{margin:.3em 0; font-size:18px}
+    .card p{margin:0; font-size:14px; color:#bcd0e0}
+
+    /* Timeline */
+    .timeline{
+      display:grid; grid-template-columns:repeat(4, minmax(180px, 1fr)); gap:1.2vw; width:min(1100px, 94vw); margin-top:1vh;
+    }
+    .case{
+      border:1px solid #2c4f6e; border-radius:14px; padding:1.2em;
+      background:rgba(10,18,30,.55); box-shadow:inset 0 0 14px rgba(58,208,255,.12), 0 10px 24px rgba(0,0,0,.35);
+      cursor:pointer; transition:transform .25s ease, box-shadow .25s ease;
+      position:relative; overflow:hidden;
+    }
+    .case:hover{transform:translateY(-4px); box-shadow:0 14px 30px rgba(0,0,0,.45), var(--glow-soft)}
+    .case .spotlight{
+      position:absolute; inset:0; background:radial-gradient(300px 140px at var(--x,50%) var(--y,50%), rgba(58,208,255,.18), transparent 70%);
+      pointer-events:none; transition:opacity .2s ease; opacity:.7;
+    }
+    .case h4{margin:.2em 0 .4em; font-size:clamp(16px, 2vw, 20px)}
+    .case p{margin:0; font-size:clamp(13px, 1.6vw, 15px); color:#bcd0e0}
+    .modal{
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(6,10,16,.65); z-index:99;
+      backdrop-filter:blur(4px);
+    }
+    .modal .box{
+      width:min(720px, 92vw); border:1px solid #2c4f6e; border-radius:16px; padding:2em;
+      background:linear-gradient(180deg, rgba(12,18,26,.9), rgba(8,14,22,.95));
+      box-shadow:0 20px 60px rgba(0,0,0,.6), var(--glow-soft);
+    }
+    .modal .box h3{margin-top:0}
+    .close{
+      margin-top:1em; border:1px solid #2c4f6e; background:transparent; color:#bfe9ff; padding:.6em 1.2em; border-radius:10px; cursor:pointer;
+    }
+    .close:hover{background:rgba(10,18,30,.7)}
+
+    /* Key takeaways highlight */
+    .highlight{
+      display:grid; gap:1vh; max-width:900px; text-align:center;
+    }
+    .hl{
+      font-size:clamp(18px, 2.2vw, 26px); font-weight:700; color:#eaf8ff;
+      background:linear-gradient(90deg, rgba(58,208,255,.08), rgba(124,255,58,.08));
+      border:1px solid #2c4f6e; border-radius:12px; padding:.6em 1em;
+      box-shadow:inset 0 0 18px rgba(58,208,255,.12);
+      position:relative; overflow:hidden;
+    }
+    .hl::after{
+      content:""; position:absolute; inset:auto -30% 0 -30%; height:3px;
+      background:linear-gradient(90deg, transparent, rgba(58,208,255,.7), transparent);
+      animation:underline 2.6s ease-in-out infinite;
+    }
+    @keyframes underline{50%{transform:translateY(-3px)} 100%{transform:translateY(0)}}
+
+    /* Closing quote */
+    .closing-quote{
+      font-size:clamp(20px, 3vw, 36px); max-width:1000px; color:#dff3ff;
+      text-shadow:0 0 12px rgba(58,208,255,.25);
+    }
+
+    /* Responsive tweaks */
+    @media (max-width:900px){
+      .split{grid-template-columns:1fr}
+      .carousel-wrap{height:380px}
+      .timeline{grid-template-columns:repeat(2,1fr)}
+      .nav .arrow{width:44px; height:44px}
+    }
+    @media (max-width:520px){
+      .icon{width:32vw; height:32vw}
+      .card{width:180px; height:120px}
+      .lead{font-size:15px}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Parallax cyber background -->
+  <div class="scene">
+    <div class="layer grid"></div>
+    <div class="layer nodes"></div>
+  </div>
+
+  <div class="deck">
+    <!-- Navigation -->
+    <div class="nav" aria-label="Slide navigation">
+      <button class="arrow prev" aria-label="Previous slide">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M15.5 5.5L8 12l7.5 6.5" stroke="#bfe9ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="arrow next" aria-label="Next slide">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M8.5 5.5L16 12l-7.5 6.5" stroke="#bfe9ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress">
+      <div class="dots" role="tablist" aria-label="Slide dots"></div>
+      <div class="counter" aria-live="polite">Slide 1 of 9</div>
+    </div>
+
+    <!-- Slides -->
+    <div class="slides" role="region" aria-label="Presentation slides">
+      <!-- Slide 0: Opening -->
+      <section class="slide opening" data-title="Opening">
+        <div class="team-logo" aria-label="CY HACKXIST logo">CY</div>
+        <h1 class="team-name">CY HACKXIST</h1>
+        <div class="tagline">Everything is Hackable – Knowledge is Power</div>
+      </section>
+
+      <!-- Slide 1: What is OSINT? -->
+      <section class="slide" data-title="What is OSINT?">
+        <h1>What is OSINT?</h1>
+        <p class="lead">OSINT is collecting and analyzing information from public sources.</p>
+
+        <div class="icon-row" id="osint-icons">
+          <!-- Website -->
+          <div class="icon" title="Websites">
+            <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" stroke="#3ad0ff" fill="none" stroke-width="2"/>
+              <path d="M10 24h44M10 40h44" stroke="#3ad0ff" stroke-width="2"/>
+              <circle cx="24" cy="32" r="4" fill="#3ad0ff"/><circle cx="40" cy="32" r="4" fill="#3ad0ff"/></svg>
+          </div>
+          <!-- Social -->
+          <div class="icon" title="Social media">
+            <svg viewBox="0 0 64 64"><circle cx="24" cy="26" r="10" stroke="#7cff3a" fill="none" stroke-width="2"/>
+              <path d="M10 52c4-10 14-14 22-14s18 4 22 14" stroke="#7cff3a" stroke-width="2" fill="none"/></svg>
+          </div>
+          <!-- Government records -->
+          <div class="icon" title="Government records">
+            <svg viewBox="0 0 64 64"><rect x="12" y="12" width="40" height="28" rx="4" stroke="#ffd43a" fill="none" stroke-width="2"/>
+              <path d="M12 44h40M22 52h20" stroke="#ffd43a" stroke-width="2"/></svg>
+          </div>
+          <!-- Satellite imagery -->
+          <div class="icon" title="Satellite imagery">
+            <svg viewBox="0 0 64 64"><path d="M18 18l12 12-6 6-12-12z" fill="#ff3a7c"/>
+              <rect x="34" y="14" width="16" height="8" fill="#3ad0ff"/><path d="M44 38l8 8" stroke="#3ad0ff" stroke-width="2"/></svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 2: Why OSINT Matters -->
+      <section class="slide" data-title="Why OSINT matters">
+        <h1>Why OSINT matters</h1>
+        <div class="split">
+          <div class="panel hacker">
+            <h3>Security</h3>
+            <div class="icon-row">
+              <div class="icon" title="Shield">
+                <svg viewBox="0 0 64 64"><path d="M12 20l20-8 20 8v14c0 10-8 18-20 22-12-4-20-12-20-22z" fill="#2ab3ff"/></svg>
+              </div>
+              <div class="icon" title="Hacker">
+                <svg viewBox="0 0 64 64"><circle cx="32" cy="22" r="10" fill="#ff3a7c"/>
+                  <rect x="14" y="34" width="36" height="16" rx="8" fill="#1b2735"/></svg>
+              </div>
+              <div class="icon" title="Detective">
+                <svg viewBox="0 0 64 64"><circle cx="26" cy="24" r="8" fill="#ffd43a"/><path d="M34 30l12 12" stroke="#3ad0ff" stroke-width="3"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="panel researcher">
+            <h3>Investigation</h3>
+            <p class="lead">Professionals use OSINT for reconnaissance, threat intelligence, due diligence, and verification; attackers use it to profile targets and find weak points.</p>
+            <div class="flow" aria-label="Reconnaissance flow">
+              <div class="node">Discover</div>
+              <div class="arrow-link"></div>
+              <div class="node">Enumerate</div>
+              <div class="arrow-link"></div>
+              <div class="node">Analyze</div>
+              <div class="arrow-link"></div>
+              <div class="node">Act/Defend</div>
+            </div>
+          </div>
+        </div>
+        <div class="contrast"></div>
+      </section>
+
+      <!-- Slide 3: How Information is Gathered -->
+      <section class="slide" data-title="How information is gathered">
+        <h1>How information is gathered</h1>
+        <p class="lead">Interactive overview of sources and tools.</p>
+
+        <div class="carousel-wrap">
+          <div class="ring" id="ring">
+            <!-- Search Engines -->
+            <div class="card" style="--i:0">
+              <div>
+                <h4>Search engines</h4>
+                <p>Google, Bing, DuckDuckGo</p>
+              </div>
+            </div>
+            <!-- Social Media -->
+            <div class="card" style="--i:1">
+              <div>
+                <h4>Social media</h4>
+                <p>Profiles, posts, connections</p>
+              </div>
+            </div>
+            <!-- Domain & DNS (TheHarvester) -->
+            <div class="card" style="--i:2">
+              <div>
+                <h4>Domain & DNS</h4>
+                <p>TheHarvester for emails/hosts</p>
+              </div>
+            </div>
+            <!-- Metadata -->
+            <div class="card" style="--i:3">
+              <div>
+                <h4>Metadata</h4>
+                <p>GPS, EXIF, timestamps</p>
+              </div>
+            </div>
+            <!-- Specialized Tools -->
+            <div class="card" style="--i:4">
+              <div>
+                <h4>Specialized tools</h4>
+                <p>Shodan, Maltego, SpiderFoot</p>
+              </div>
+            </div>
+            <!-- Add filler for balance -->
+            <div class="card" style="--i:5">
+              <div>
+                <h4>Public records</h4>
+                <p>Gov databases, filings</p>
+              </div>
+            </div>
+            <div class="card" style="--i:6">
+              <div>
+                <h4>Media</h4>
+                <p>News, blogs, archives</p>
+              </div>
+            </div>
+            <div class="card" style="--i:7">
+              <div>
+                <h4>Geospatial</h4>
+                <p>Maps, satellite, AIS</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 4: Hacker vs Researcher Approach -->
+      <section class="slide" data-title="Hacker vs researcher">
+        <h1>Hacker vs Researcher</h1>
+        <div class="split">
+          <div class="panel hacker">
+            <h3 style="color:#ff759f">Hacker view</h3>
+            <ul class="checklist">
+              <li class="check"><span class="mark">✓</span>Emails and exposed credentials</li>
+              <li class="check"><span class="mark">✓</span>Weak points in infrastructure</li>
+              <li class="check"><span class="mark">✓</span>Public attack surface mapping</li>
+            </ul>
+          </div>
+          <div class="panel researcher">
+            <h3 style="color:#7cd96a">Researcher view</h3>
+            <ul class="checklist">
+              <li class="check"><span class="mark">✓</span>Defensive profiling and monitoring</li>
+              <li class="check"><span class="mark">✓</span>Spotting fake or bot accounts</li>
+              <li class="check"><span class="mark">✓</span>Attribution and verification</li>
+            </ul>
+          </div>
+        </div>
+        <div class="contrast"></div>
+      </section>
+
+      <!-- Slide 5: The Investigator Mindset -->
+      <section class="slide" data-title="Investigator mindset">
+        <h1>The investigator mindset</h1>
+        <div class="checklist" id="mindset-list">
+          <div class="check"><span class="mark">✓</span>Curiosity</div>
+          <div class="check"><span class="mark">✓</span>Skepticism</div>
+          <div class="check"><span class="mark">✓</span>Pattern recognition</div>
+          <div class="check"><span class="mark">✓</span>Documentation</div>
+          <div class="check"><span class="mark">✓</span>Ethics</div>
+        </div>
+        <div class="icon" style="margin-top:2vh" title="Detective scanning">
+          <svg viewBox="0 0 64 64"><circle cx="28" cy="26" r="10" fill="#ffd43a"/><path d="M36 32l14 14" stroke="#3ad0ff" stroke-width="3"/>
+            <circle cx="50" cy="48" r="6" fill="none" stroke="#3ad0ff" stroke-width="2"/></svg>
+        </div>
+      </section>
+
+      <!-- Slide 6: Real-World Examples -->
+      <section class="slide" data-title="Real-world examples">
+        <h1>Real-world examples</h1>
+        <p class="lead">Click a case to see details.</p>
+
+        <div class="timeline">
+          <div class="case" data-case="social-tracking">
+            <div class="spotlight"></div>
+            <h4>Terrorist tracking via social media</h4>
+            <p>Open posts, geotags, and networks expose movement patterns.</p>
+          </div>
+          <div class="case" data-case="fake-news">
+            <div class="spotlight"></div>
+            <h4>Fake news campaign detection</h4>
+            <p>Source analysis, timing, and cross-platform signatures.</p>
+          </div>
+          <div class="case" data-case="shodan-servers">
+            <div class="spotlight"></div>
+            <h4>Exposed servers via Shodan</h4>
+            <p>Indexed ports, banners, and misconfigurations.</p>
+          </div>
+          <div class="case" data-case="maltego-network">
+            <div class="spotlight"></div>
+            <h4>Criminal networks mapped with Maltego</h4>
+            <p>Entities, relationships, and graph insights.</p>
+          </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal" id="case-modal" aria-hidden="true" role="dialog">
+          <div class="box">
+            <h3 id="case-title">Case</h3>
+            <p id="case-text">Details will appear here.</p>
+            <button class="close" id="close-modal">Close</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 7: Key Takeaways -->
+      <section class="slide" data-title="Key takeaways">
+        <h1>Key takeaways</h1>
+        <div class="highlight">
+          <div class="hl">OSINT is powerful, legal, and accessible.</div>
+          <div class="hl">Foundation of modern investigations.</div>
+          <div class="hl">Hackers exploit it; professionals defend with it.</div>
+          <div class="hl">Mastering OSINT means thinking like a detective.</div>
+        </div>
+        <div class="icon" style="margin-top:2vh" title="Data forming silhouette">
+          <svg viewBox="0 0 64 64">
+            <path d="M24 26c0-8 8-12 16-8 6 3 8 10 6 16-2 6-9 10-16 9-6-1-6-7-6-17z" fill="#2ab3ff" opacity=".8"/>
+            <path d="M20 46c10-2 20 0 24 6" stroke="#7cff3a" stroke-width="2" fill="none"/>
+          </svg>
+        </div>
+      </section>
+
+      <!-- Slide 8: Closing -->
+      <section class="slide" data-title="Closing">
+        <h2>“OSINT is not about secret hacking tricks—it’s about connecting the dots in plain sight.”</h2>
+        <div class="closing-quote"></div>
+        <div class="team-logo" aria-label="CY HACKXIST logo">CY</div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // Slide engine
+    const slidesEl = document.querySelector('.slides');
+    const slideSections = Array.from(document.querySelectorAll('.slide'));
+    const dotsEl = document.querySelector('.dots');
+    const counterEl = document.querySelector('.counter');
+    const prevBtn = document.querySelector('.prev');
+    const nextBtn = document.querySelector('.next');
+    let index = 0;
+
+    function updateProgress(){
+      dotsEl.innerHTML = '';
+      slideSections.forEach((_, i)=>{
+        const d = document.createElement('button');
+        d.className = 'dot' + (i===index ? ' active':'');
+        d.setAttribute('aria-label', `Go to slide ${i+1}`);
+        d.addEventListener('click', ()=>goTo(i));
+        dotsEl.appendChild(d);
+      });
+      counterEl.textContent = `Slide ${index+1} of ${slideSections.length}`;
+    }
+
+    function goTo(i){
+      index = Math.max(0, Math.min(slideSections.length-1, i));
+      const easing = ['translateX(', -index*100, 'vw)'].join('');
+      slidesEl.style.transform = easing;
+      updateProgress();
+      revealAnimations(index);
+    }
+
+    prevBtn.addEventListener('click', ()=>goTo(index-1));
+    nextBtn.addEventListener('click', ()=>goTo(index+1));
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='ArrowRight' || e.key==='PageDown') goTo(index+1);
+      if(e.key==='ArrowLeft'  || e.key==='PageUp')   goTo(index-1);
+      if(e.key==='Home') goTo(0);
+      if(e.key==='End') goTo(slideSections.length-1);
+    });
+
+    // Initial load
+    updateProgress();
+    goTo(0);
+
+    // Opening slide: staggered icon glow on "What is OSINT?"
+    function glowSequentialIcons(){
+      const icons = document.querySelectorAll('#osint-icons .icon');
+      icons.forEach((icon, i)=>{
+        icon.style.opacity = '0';
+        icon.style.filter = 'brightness(0.7)';
+        setTimeout(()=>{
+          icon.style.transition = 'opacity 500ms ease, filter 500ms ease';
+          icon.style.opacity = '1';
+          icon.style.filter = 'brightness(1)';
+        }, 300 + i*260);
+      });
+    }
+
+    // Mindset checkmarks pop-in
+    function popMindset(){
+      document.querySelectorAll('#mindset-list .mark').forEach((m, i)=>{
+        setTimeout(()=> m.style.opacity = '1', 250 + i*220);
+      });
+    }
+
+    // Carousel ring layout
+    (function layoutRing(){
+      const cards = Array.from(document.querySelectorAll('.ring .card'));
+      const step = 360 / cards.length;
+      cards.forEach((c, i)=>{
+        const angle = i * step;
+        c.style.transform = `translate(-50%, -50%) rotateY(${angle}deg) translateZ(240px)`;
+      });
+    })();
+
+    // Timeline spotlight and modal
+    document.querySelectorAll('.case').forEach(caseEl=>{
+      caseEl.addEventListener('mousemove', (e)=>{
+        const rect = caseEl.getBoundingClientRect();
+        caseEl.style.setProperty('--x', `${e.clientX - rect.left}px`);
+        caseEl.style.setProperty('--y', `${e.clientY - rect.top}px`);
+      });
+      caseEl.addEventListener('click', ()=>{
+        const id = caseEl.dataset.case;
+        const modal = document.getElementById('case-modal');
+        const title = document.getElementById('case-title');
+        const text = document.getElementById('case-text');
+        const content = {
+          'social-tracking': {
+            t:'Terrorist tracking via social media',
+            d:'Analysts correlate public posts, geotags, follower networks, and time-of-day patterns to infer location and intent — often validated with cross-platform signals and local open-source reports.'
+          },
+          'fake-news': {
+            t:'Fake news campaign detection',
+            d:'Investigators examine domain age, hosting metadata, post timing, linguistic markers, and amplification networks. Graph analysis highlights coordinated inauthentic behavior and origin nodes.'
+          },
+          'shodan-servers': {
+            t:'Exposed servers via Shodan',
+            d:'Banner grabs reveal software versions, default logins, or sensitive endpoints. Prioritization focuses on Internet-facing assets with misconfigurations, stale certificates, or debug ports.'
+          },
+          'maltego-network': {
+            t:'Criminal networks mapped with Maltego',
+            d:'Entities (people, domains, emails) are enriched with transforms; relationship graphs surface central actors, bridges, and clusters, guiding further collection and lawful action.'
+          }
+        };
+        title.textContent = content[id].t;
+        text.textContent  = content[id].d;
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden','false');
+      });
+    });
+    document.getElementById('close-modal').addEventListener('click', ()=>{
+      const modal = document.getElementById('case-modal');
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden','true');
+    });
+
+    // Reveal animations per slide index
+    function revealAnimations(i){
+      if(i===1) glowSequentialIcons();
+      if(i===4) popMindset();
+    }
+
+    // Gentle zoom/fade per slide change (CSS-driven via transform; add body class rotation)
+    let rotate = 0;
+    function spinAmbient(){
+      rotate += 0.2;
+      document.querySelector('.grid').style.transform = `translateZ(-300px) scale(1.3) rotate(${rotate}deg)`;
+      requestAnimationFrame(spinAmbient);
+    }
+    spinAmbient();
+
+    // Accessibility: focus management
+    function focusCurrent(){
+      const current = slideSections[index];
+      current.setAttribute('tabindex','-1');
+      current.focus({preventScroll:true});
+      slideSections.forEach((s,j)=>{ if(j!==index) s.removeAttribute('tabindex') });
+    }
+    document.addEventListener('transitionend', focusCurrent);
+  </script>
+</body>
+</html>
